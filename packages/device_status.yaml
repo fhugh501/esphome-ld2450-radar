@@ -164,6 +164,7 @@ script:
           condition:
             not:
               api.connected:
+                state_subscription_only: true
           then:
             - globals.set:
                 id: status_connection_error
@@ -217,15 +218,32 @@ esphome:
 api:
   on_client_connected:
     then:
-      - script.stop: connection_loss_timer
-      - globals.set:
-          id: status_connection_error
-          value: "false"
-      - script.execute: update_device_status
+      # Only a state-subscribing API client counts as the supervisory
+      # Home Assistant connection. Logger/CLI clients must not affect
+      # fleet connectivity status.
+      - if:
+          condition:
+            api.connected:
+              state_subscription_only: true
+          then:
+            - script.stop: connection_loss_timer
+            - globals.set:
+                id: status_connection_error
+                value: "false"
+            - script.execute: update_device_status
 
   on_client_disconnected:
     then:
-      - script.execute: connection_loss_timer
+      # This trigger fires for every departing API client, including
+      # ESPHome logs. Start the grace timer only when no state-subscribing
+      # client (normally Home Assistant) remains connected.
+      - if:
+          condition:
+            not:
+              api.connected:
+                state_subscription_only: true
+          then:
+            - script.execute: connection_loss_timer
 
 ota:
   - platform: esphome
