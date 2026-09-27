@@ -1,0 +1,296 @@
+# Reusable ESP32 identity, diagnostics, and status LED controller.
+# Designed so immutable hardware identity is separate from deployment/location metadata.
+#
+# Required host substitutions:
+#   device_id: last 6 hexadecimal characters of the ESP32 MAC, uppercase preferred
+# Optional substitutions:
+#   product_family, hardware_model, status_led_pin
+
+substitutions:
+  product_family: "ESPHome Sensor"
+  hardware_model: "ESP32-S3"
+  status_led_pin: "GPIO48"
+
+globals:
+  - id: status_booting
+    type: bool
+    restore_value: no
+    initial_value: "true"
+
+  - id: status_updating
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+  - id: status_connection_error
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+  - id: status_critical_fault
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: onboard_led
+    name: "Status LED"
+    pin: ${status_led_pin}
+    num_leds: 1
+    channel_colors: GRB
+    chipset: ws2812
+    restore_mode: ALWAYS_OFF
+    entity_category: diagnostic
+    effects:
+      - pulse:
+          name: "Connection Error Pulse"
+          transition_length: 500ms
+          update_interval: 500ms
+          min_brightness: 15%
+          max_brightness: 100%
+      - strobe:
+          name: "Critical Fault Flash"
+          colors:
+            - state: true
+              brightness: 100%
+              red: 100%
+              green: 0%
+              blue: 0%
+              duration: 250ms
+            - state: false
+              duration: 250ms
+
+script:
+  - id: update_device_status
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(status_critical_fault);'
+          then:
+            - text_sensor.template.publish:
+                id: device_status
+                state: "Critical Fault"
+            - light.turn_on:
+                id: onboard_led
+                brightness: 100%
+                red: 100%
+                green: 0%
+                blue: 0%
+                effect: "Critical Fault Flash"
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(status_updating);'
+                then:
+                  - text_sensor.template.publish:
+                      id: device_status
+                      state: "Updating"
+                  - light.turn_on:
+                      id: onboard_led
+                      brightness: 100%
+                      red: 100%
+                      green: 100%
+                      blue: 0%
+                      effect: "None"
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(status_connection_error);'
+                      then:
+                        - text_sensor.template.publish:
+                            id: device_status
+                            state: "Connection Error"
+                        - light.turn_on:
+                            id: onboard_led
+                            brightness: 100%
+                            red: 100%
+                            green: 35%
+                            blue: 0%
+                            effect: "Connection Error Pulse"
+                      else:
+                        - if:
+                            condition:
+                              lambda: 'return id(status_booting);'
+                            then:
+                              - text_sensor.template.publish:
+                                  id: device_status
+                                  state: "Booting"
+                              - light.turn_on:
+                                  id: onboard_led
+                                  brightness: 100%
+                                  red: 0%
+                                  green: 0%
+                                  blue: 100%
+                                  effect: "None"
+                            else:
+                              - if:
+                                  condition:
+                                    binary_sensor.is_on: ld2450_presence
+                                  then:
+                                    - text_sensor.template.publish:
+                                        id: device_status
+                                        state: "Active"
+                                    - light.turn_on:
+                                        id: onboard_led
+                                        brightness: 10%
+                                        red: 0%
+                                        green: 100%
+                                        blue: 0%
+                                        effect: "None"
+                                  else:
+                                    - text_sensor.template.publish:
+                                        id: device_status
+                                        state: "Idle"
+                                    - light.turn_on:
+                                        id: onboard_led
+                                        brightness: 3%
+                                        red: 100%
+                                        green: 100%
+                                        blue: 100%
+                                        effect: "None"
+
+  - id: connection_loss_timer
+    mode: restart
+    then:
+      - delay: 30s
+      - if:
+          condition:
+            not:
+              api.connected:
+          then:
+            - globals.set:
+                id: status_connection_error
+                value: "true"
+            - script.execute: update_device_status
+
+  # Component packages can call these scripts when a verified local fault
+  # condition is detected or cleared.
+  - id: set_critical_hardware_fault
+    mode: restart
+    then:
+      - globals.set:
+          id: status_critical_fault
+          value: "true"
+      - script.execute: update_device_status
+
+  - id: clear_critical_hardware_fault
+    mode: restart
+    then:
+      - globals.set:
+          id: status_critical_fault
+          value: "false"
+      - script.execute: update_device_status
+
+esphome:
+  on_boot:
+    priority: 800
+    then:
+      - globals.set:
+          id: status_booting
+          value: "true"
+      - script.execute: update_device_status
+
+  on_boot:
+    priority: -100
+    then:
+      - delay: 3s
+      - globals.set:
+          id: status_booting
+          value: "false"
+      - script.execute: update_device_status
+
+api:
+  on_client_connected:
+    then:
+      - script.stop: connection_loss_timer
+      - globals.set:
+          id: status_connection_error
+          value: "false"
+      - script.execute: update_device_status
+
+  on_client_disconnected:
+    then:
+      - script.execute: connection_loss_timer
+
+ota:
+  - platform: esphome
+    on_begin:
+      then:
+        - globals.set:
+            id: status_updating
+            value: "true"
+        - script.execute: update_device_status
+
+    on_error:
+      then:
+        - globals.set:
+            id: status_updating
+            value: "false"
+        - globals.set:
+            id: status_connection_error
+            value: "true"
+        - script.execute: update_device_status
+
+text_sensor:
+  - platform: template
+    id: device_status
+    name: "Device Status"
+    entity_category: diagnostic
+    update_interval: never
+
+  - platform: template
+    name: "Device Identifier"
+    entity_category: diagnostic
+    lambda: |-
+      return {"${device_id}"};
+    update_interval: never
+
+  - platform: template
+    name: "Product Family"
+    entity_category: diagnostic
+    lambda: |-
+      return {"${product_family}"};
+    update_interval: never
+
+  - platform: template
+    name: "Hardware Model"
+    entity_category: diagnostic
+    lambda: |-
+      return {"${hardware_model}"};
+    update_interval: never
+
+  - platform: wifi_info
+    mac_address:
+      name: "ESP32 MAC Address"
+      entity_category: diagnostic
+    ip_address:
+      name: "IP Address"
+      entity_category: diagnostic
+    ssid:
+      name: "Connected SSID"
+      entity_category: diagnostic
+    bssid:
+      name: "Connected BSSID"
+      entity_category: diagnostic
+
+  - platform: version
+    name: "ESPHome Version"
+    entity_category: diagnostic
+
+sensor:
+  - platform: wifi_signal
+    name: "Wi-Fi Signal"
+    update_interval: 60s
+    entity_category: diagnostic
+
+  - platform: uptime
+    name: "Uptime"
+    update_interval: 60s
+    entity_category: diagnostic
+
+button:
+  - platform: restart
+    name: "Restart ESP32"
+    entity_category: diagnostic
