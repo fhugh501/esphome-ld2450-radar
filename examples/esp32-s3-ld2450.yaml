@@ -1,8 +1,14 @@
-# Independent LD2450 example. Replace the board definition with your board's
-# actual model if your ESP32-S3 hardware needs one.
+# Standard ESP32-S3 + LD2450 device example.
+# device_id is the last six hexadecimal characters of the ESP32 Wi-Fi MAC.
+substitutions:
+  device_id: "A1B2C3"
+  product_family: "LD2450 Presence Sensor"
+  hardware_model: "ESP32-S3 N16R8"
+  status_led_pin: "GPIO48"
+
 esphome:
-  name: ld2450-example
-  friendly_name: LD2450 Example
+  name: presence-a1b2c3
+  friendly_name: Presence Sensor A1B2C3
   min_version: 2026.5.0
 
 esp32:
@@ -10,20 +16,30 @@ esp32:
   framework:
     type: esp-idf
 
+psram:
+  mode: octal
+  speed: 80MHz
+
 packages:
+  device_status: github://fhugh501/esphome-ld2450-radar/packages/device_status.yaml@main
   ld2450_radar: github://fhugh501/esphome-ld2450-radar/packages/ld2450.yaml@main
 
 logger:
+  level: INFO
 
 api:
   encryption:
-    key: !secret ld2450_example_api_key
-
-ota:
-  - platform: esphome
+    key: !secret api_encryption_key
 
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+  ap:
+    ssid: "Presence A1B2C3 Fallback"
 
 captive_portal:
+
+esp32_improv:
+  authorizer: none
+
+improv_serial:
