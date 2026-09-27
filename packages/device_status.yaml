@@ -199,6 +199,15 @@ esphome:
 
     - priority: -100
       then:
+        - text_sensor.template.publish:
+            id: device_identifier
+            state: "${device_id}"
+        - text_sensor.template.publish:
+            id: product_family_diagnostic
+            state: "${product_family}"
+        - text_sensor.template.publish:
+            id: hardware_model_diagnostic
+            state: "${hardware_model}"
         - delay: 3s
         - globals.set:
             id: status_booting
