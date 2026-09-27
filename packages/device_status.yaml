@@ -111,7 +111,7 @@ script:
                             id: onboard_led
                             brightness: 100%
                             red: 100%
-                            green: 35%
+                            green: 65%
                             blue: 0%
                             effect: "Connection Error Pulse"
                       else:
