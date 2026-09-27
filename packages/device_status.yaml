@@ -185,21 +185,20 @@ script:
 
 esphome:
   on_boot:
-    priority: 800
-    then:
-      - globals.set:
-          id: status_booting
-          value: "true"
-      - script.execute: update_device_status
+    - priority: 800
+      then:
+        - globals.set:
+            id: status_booting
+            value: "true"
+        - script.execute: update_device_status
 
-  on_boot:
-    priority: -100
-    then:
-      - delay: 3s
-      - globals.set:
-          id: status_booting
-          value: "false"
-      - script.execute: update_device_status
+    - priority: -100
+      then:
+        - delay: 3s
+        - globals.set:
+            id: status_booting
+            value: "false"
+        - script.execute: update_device_status
 
 api:
   on_client_connected:
