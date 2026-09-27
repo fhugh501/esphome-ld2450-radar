@@ -19,9 +19,15 @@ binary_sensor:
       id: ld2450_presence
       on_press:
         then:
+          - globals.set:
+              id: status_active
+              value: "true"
           - script.execute: update_device_status
       on_release:
         then:
+          - globals.set:
+              id: status_active
+              value: "false"
           - script.execute: update_device_status
     has_moving_target:
       name: "LD2450 Moving Target"
