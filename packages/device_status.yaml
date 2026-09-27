@@ -17,6 +17,11 @@ globals:
     restore_value: no
     initial_value: "true"
 
+  - id: status_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
   - id: status_updating
     type: bool
     restore_value: no
@@ -127,7 +132,7 @@ script:
                             else:
                               - if:
                                   condition:
-                                    binary_sensor.is_on: ld2450_presence
+                                    lambda: 'return id(status_active);'
                                   then:
                                     - text_sensor.template.publish:
                                         id: device_status
