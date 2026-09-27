@@ -6,7 +6,43 @@ The Kitchen prototype happens to run this radar on the same ESP32-S3 as [Frances
 
 **Status:** This package transcribes the LD2450 portion of a working Home Assistant ESPHome configuration. It has not yet been compiled or flashed from this repository. Review your pins and run ESPHome **Validate** before installing. There is no firmware binary here.
 
-## Hardware
+
+## Standard device architecture
+
+This repository now separates **immutable hardware identity** from **deployment identity** so a physical sensor can move between rooms, sites, or roles without losing its underlying identity.
+
+### Immutable device identity
+
+- `device_id`: last six hexadecimal characters of the ESP32 Wi-Fi MAC address (for example, MAC `44:1B:F6:81:F3:24` becomes `81F324`).
+- The full ESP32 MAC is exposed as a diagnostic entity so the identifier can be audited against the hardware.
+- Product family, hardware model, ESPHome version, IP address, SSID/BSSID, Wi-Fi signal, uptime, and controller status are exposed as diagnostics.
+- Do not encode a room number, customer, site, or other deployment-specific information into the immutable device identifier.
+
+Deployment information such as site, building, floor, room, area, role, and customer asset number belongs in Home Assistant or a future fleet-management layer. Moving a sensor from Room 324 to Room 310 should change its deployment metadata, not its hardware identity.
+
+### Shared status LED standard
+
+The reusable `packages/device_status.yaml` controller owns status indication and applies one priority order so competing events cannot overwrite a more important state.
+
+| Priority | State | LED |
+| ---: | --- | --- |
+| 1 | Critical hardware fault | Red, 100%, fast flash |
+| 2 | Firmware updating | Yellow, 100%, solid |
+| 3 | Connectivity/recoverable error | Orange, slow pulse |
+| 4 | Booting | Blue, 100%, solid |
+| 5 | Presence/active | Green, 10%, solid |
+| 6 | Idle/no presence | White, 3%, solid |
+
+The controller also publishes a `Device Status` diagnostic text sensor. API disconnects use a grace period before declaring a connection error so brief client reconnects do not immediately present as a fault. Critical-fault scripts are provided for component packages to call only when they have evidence of a genuine local hardware failure.
+
+### Package layering
+
+- `packages/device_status.yaml`: reusable ESP32 identity, diagnostics, lifecycle state, status LED, API connection handling, OTA indication, and fault-state controller.
+- `packages/ld2450.yaml`: LD2450 UART, radar entities, target tracking, zones, controls, and radar-specific behavior.
+- Device YAML: hardware identity substitutions, ESP32 board definition, Wi-Fi, shared API encryption secret, logger, and provisioning.
+
+This layering is intended to keep residential builds simple while avoiding assumptions that would make later fleet or commercial deployments difficult to support.
+\n## Hardware
 
 | Part | Purpose |
 | --- | --- |
@@ -27,11 +63,12 @@ TX and RX cross. Confirm your particular ESP32-S3 board exposes these pins and c
 
 ## Quick start in the ESPHome GUI
 
-1. Open a new ESPHome device's YAML in Home Assistant. Keep your own `esphome`, `esp32`, Wi-Fi, `api`, `ota`, and provisioning configuration.
+1. Open a new ESPHome device's YAML in Home Assistant. Keep your own `esphome`, `esp32`, Wi-Fi, `api`, logger, and provisioning configuration. OTA lifecycle handling is supplied by the shared device-status package.
 2. Add this top-level block. If your device already has `packages:`, add the `ld2450_radar` entry inside it.
 
    ```yaml
    packages:
+     device_status: github://fhugh501/esphome-ld2450-radar/packages/device_status.yaml@main
      ld2450_radar: github://fhugh501/esphome-ld2450-radar/packages/ld2450.yaml@main
    ```
 
