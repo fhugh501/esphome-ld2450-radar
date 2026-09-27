@@ -254,24 +254,21 @@ text_sensor:
     update_interval: never
 
   - platform: template
+    id: device_identifier
     name: "Device Identifier"
     entity_category: diagnostic
-    lambda: |-
-      return {"${device_id}"};
     update_interval: never
 
   - platform: template
+    id: product_family_diagnostic
     name: "Product Family"
     entity_category: diagnostic
-    lambda: |-
-      return {"${product_family}"};
     update_interval: never
 
   - platform: template
+    id: hardware_model_diagnostic
     name: "Hardware Model"
     entity_category: diagnostic
-    lambda: |-
-      return {"${hardware_model}"};
     update_interval: never
 
   - platform: wifi_info
