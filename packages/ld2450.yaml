@@ -410,6 +410,6 @@ interval:
                       id: ld2450_fault_asserted
                       value: "true"
                   - globals.set:
-                  id: status_critical_fault
-                  value: "true"
-              - script.execute: update_device_status
+                      id: status_critical_fault
+                      value: "true"
+                  - script.execute: update_device_status
