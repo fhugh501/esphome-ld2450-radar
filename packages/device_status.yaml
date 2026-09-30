@@ -160,9 +160,6 @@ text_sensor:
     bssid:
       name: "Connected BSSID"
       entity_category: diagnostic
-  - platform: version
-    name: "ESPHome Version"
-    entity_category: diagnostic
 
 sensor:
   - platform: wifi_signal
