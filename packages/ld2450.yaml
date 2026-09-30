@@ -2,8 +2,6 @@
 # Radar communication health is based on receipt of valid periodic data frames.
 
 substitutions:
-  ld2450_startup_grace: "20s"
-  ld2450_frame_timeout: "10s"
 
 # HLK-LD2450 radar package for ESP32-S3. Keep host Wi-Fi/API/OTA in your device YAML.
 uart:
@@ -26,17 +24,6 @@ ld2450:
       - globals.set:
           id: ld2450_last_data_ms
           value: !lambda 'return millis();'
-      - if:
-          condition:
-            lambda: 'return id(ld2450_fault_asserted);'
-          then:
-            - globals.set:
-                id: ld2450_fault_asserted
-                value: "false"
-            - globals.set:
-                id: status_critical_fault
-                value: "false"
-            - script.execute: update_device_status
 
 binary_sensor:
   - platform: ld2450
@@ -353,67 +340,3 @@ text_sensor:
         name: "LD2450 Target 3 Direction"
         disabled_by_default: false
 
-
-# ============================================================
-# LD2450 COMMUNICATION HEALTH WATCHDOG
-#
-# A healthy LD2450 emits periodic UART data even when no target
-# is present. The component's on_data hook fires only after a
-# valid report has been processed, so occupancy and health are
-# kept separate.
-# ============================================================
-
-globals:
-  - id: ld2450_data_seen
-    type: bool
-    restore_value: no
-    initial_value: "false"
-
-  - id: ld2450_fault_asserted
-    type: bool
-    restore_value: no
-    initial_value: "false"
-
-  - id: ld2450_last_data_ms
-    type: uint32_t
-    restore_value: no
-    initial_value: "0"
-
-esphome:
-  on_boot:
-    - priority: -200
-      then:
-        - delay: ${ld2450_startup_grace}
-        - if:
-            condition:
-              lambda: 'return !id(ld2450_data_seen);'
-            then:
-              - globals.set:
-                  id: ld2450_fault_asserted
-                  value: "true"
-              - globals.set:
-                  id: status_critical_fault
-                  value: "true"
-              - script.execute: update_device_status
-
-interval:
-  - interval: 5s
-    then:
-      - if:
-          condition:
-            lambda: |-
-              if (!id(ld2450_data_seen)) return false;
-              const uint32_t timeout_ms = 10000;
-              return (uint32_t)(millis() - id(ld2450_last_data_ms)) > timeout_ms;
-          then:
-            - if:
-                condition:
-                  lambda: 'return !id(ld2450_fault_asserted);'
-                then:
-                  - globals.set:
-                      id: ld2450_fault_asserted
-                      value: "true"
-                  - globals.set:
-                      id: status_critical_fault
-                      value: "true"
-                  - script.execute: update_device_status
