@@ -27,10 +27,6 @@ globals:
     restore_value: no
     initial_value: "false"
 
-  - id: status_connection_error
-    type: bool
-    restore_value: no
-    initial_value: "false"
 
 
 light:
@@ -44,12 +40,6 @@ light:
     restore_mode: ALWAYS_OFF
     entity_category: diagnostic
     effects:
-      - pulse:
-          name: "Connection Error Pulse"
-          transition_length: 500ms
-          update_interval: 500ms
-          min_brightness: 15%
-          max_brightness: 100%
             - state: false
               duration: 250ms
 
@@ -74,34 +64,19 @@ script:
           else:
                   - if:
                       condition:
-                        lambda: 'return id(status_connection_error);'
+                        lambda: 'return id(status_booting);'
                       then:
                         - text_sensor.template.publish:
                             id: device_status
-                            state: "Connection Error"
+                            state: "Booting"
                         - light.turn_on:
                             id: onboard_led
                             brightness: 100%
-                            red: 100%
-                            green: 65%
-                            blue: 0%
-                            effect: "Connection Error Pulse"
+                            red: 0%
+                            green: 0%
+                            blue: 100%
+                            effect: "None"
                       else:
-                        - if:
-                            condition:
-                              lambda: 'return id(status_booting);'
-                            then:
-                              - text_sensor.template.publish:
-                                  id: device_status
-                                  state: "Booting"
-                              - light.turn_on:
-                                  id: onboard_led
-                                  brightness: 100%
-                                  red: 0%
-                                  green: 0%
-                                  blue: 100%
-                                  effect: "None"
-                            else:
                               - if:
                                   condition:
                                     lambda: 'return id(status_active);'
@@ -127,21 +102,6 @@ script:
                                         green: 100%
                                         blue: 100%
                                         effect: "None"
-
-  - id: connection_loss_timer
-    mode: restart
-    then:
-      - delay: 30s
-      - if:
-          condition:
-            not:
-              api.connected:
-                state_subscription_only: true
-          then:
-            - globals.set:
-                id: status_connection_error
-                value: "true"
-            - script.execute: update_device_status
 
 
 esphome:
@@ -170,35 +130,6 @@ esphome:
             value: "false"
         - script.execute: update_device_status
 
-api:
-  on_client_connected:
-    then:
-      # Only a state-subscribing API client counts as the supervisory
-      # Home Assistant connection. Logger/CLI clients must not affect
-      # fleet connectivity status.
-      - if:
-          condition:
-            api.connected:
-              state_subscription_only: true
-          then:
-            - script.stop: connection_loss_timer
-            - globals.set:
-                id: status_connection_error
-                value: "false"
-            - script.execute: update_device_status
-
-  on_client_disconnected:
-    then:
-      # This trigger fires for every departing API client, including
-      # ESPHome logs. Start the grace timer only when no state-subscribing
-      # client (normally Home Assistant) remains connected.
-      - if:
-          condition:
-            not:
-              api.connected:
-                state_subscription_only: true
-          then:
-            - script.execute: connection_loss_timer
 
 ota:
   - platform: esphome
@@ -214,9 +145,6 @@ ota:
         - globals.set:
             id: status_updating
             value: "false"
-        - globals.set:
-            id: status_connection_error
-            value: "true"
         - script.execute: update_device_status
 
 text_sensor:
