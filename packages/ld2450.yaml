@@ -16,14 +16,6 @@ ld2450:
   id: ld2450_radar
   uart_id: ld2450_uart
 
-  on_data:
-    then:
-      - globals.set:
-          id: ld2450_data_seen
-          value: "true"
-      - globals.set:
-          id: ld2450_last_data_ms
-          value: !lambda 'return millis();'
 
 binary_sensor:
   - platform: ld2450
