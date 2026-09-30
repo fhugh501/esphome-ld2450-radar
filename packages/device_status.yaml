@@ -1,11 +1,5 @@
-# Reusable ESP32 identity, diagnostics, and status LED controller.
-# Designed so immutable hardware identity is separate from deployment/location metadata.
-#
-# Required host substitutions:
-#   device_id: last 6 hexadecimal characters of the ESP32 MAC, uppercase preferred
-# Optional substitutions:
-#   product_family, hardware_model, status_led_pin
-
+# Reusable ESP32 identity, diagnostics, and simple status LED controller.
+# Required host substitution: device_id
 substitutions:
   product_family: "ESPHome Sensor"
   hardware_model: "ESP32-S3"
@@ -16,18 +10,14 @@ globals:
     type: bool
     restore_value: no
     initial_value: "true"
-
   - id: status_active
     type: bool
     restore_value: no
     initial_value: "false"
-
   - id: status_updating
     type: bool
     restore_value: no
     initial_value: "false"
-
-
 
 light:
   - platform: esp32_rmt_led_strip
@@ -39,9 +29,6 @@ light:
     chipset: ws2812
     restore_mode: ALWAYS_OFF
     entity_category: diagnostic
-    effects:
-            - state: false
-              duration: 250ms
 
 script:
   - id: update_device_status
@@ -60,49 +47,44 @@ script:
                 red: 100%
                 green: 100%
                 blue: 0%
-                effect: "None"
           else:
+            - if:
+                condition:
+                  lambda: 'return id(status_booting);'
+                then:
+                  - text_sensor.template.publish:
+                      id: device_status
+                      state: "Booting"
+                  - light.turn_on:
+                      id: onboard_led
+                      brightness: 100%
+                      red: 0%
+                      green: 0%
+                      blue: 100%
+                else:
                   - if:
                       condition:
-                        lambda: 'return id(status_booting);'
+                        lambda: 'return id(status_active);'
                       then:
                         - text_sensor.template.publish:
                             id: device_status
-                            state: "Booting"
+                            state: "Active"
                         - light.turn_on:
                             id: onboard_led
-                            brightness: 100%
+                            brightness: 10%
                             red: 0%
-                            green: 0%
-                            blue: 100%
-                            effect: "None"
+                            green: 100%
+                            blue: 0%
                       else:
-                              - if:
-                                  condition:
-                                    lambda: 'return id(status_active);'
-                                  then:
-                                    - text_sensor.template.publish:
-                                        id: device_status
-                                        state: "Active"
-                                    - light.turn_on:
-                                        id: onboard_led
-                                        brightness: 10%
-                                        red: 0%
-                                        green: 100%
-                                        blue: 0%
-                                        effect: "None"
-                                  else:
-                                    - text_sensor.template.publish:
-                                        id: device_status
-                                        state: "Idle"
-                                    - light.turn_on:
-                                        id: onboard_led
-                                        brightness: 3%
-                                        red: 100%
-                                        green: 100%
-                                        blue: 100%
-                                        effect: "None"
-
+                        - text_sensor.template.publish:
+                            id: device_status
+                            state: "Idle"
+                        - light.turn_on:
+                            id: onboard_led
+                            brightness: 3%
+                            red: 100%
+                            green: 100%
+                            blue: 100%
 
 esphome:
   on_boot:
@@ -112,7 +94,6 @@ esphome:
             id: status_booting
             value: "true"
         - script.execute: update_device_status
-
     - priority: -100
       then:
         - text_sensor.template.publish:
@@ -130,7 +111,6 @@ esphome:
             value: "false"
         - script.execute: update_device_status
 
-
 ota:
   - platform: esphome
     on_begin:
@@ -139,7 +119,6 @@ ota:
             id: status_updating
             value: "true"
         - script.execute: update_device_status
-
     on_error:
       then:
         - globals.set:
@@ -153,25 +132,21 @@ text_sensor:
     name: "Device Status"
     entity_category: diagnostic
     update_interval: never
-
   - platform: template
     id: device_identifier
     name: "Device Identifier"
     entity_category: diagnostic
     update_interval: never
-
   - platform: template
     id: product_family_diagnostic
     name: "Product Family"
     entity_category: diagnostic
     update_interval: never
-
   - platform: template
     id: hardware_model_diagnostic
     name: "Hardware Model"
     entity_category: diagnostic
     update_interval: never
-
   - platform: wifi_info
     mac_address:
       name: "ESP32 MAC Address"
@@ -185,7 +160,6 @@ text_sensor:
     bssid:
       name: "Connected BSSID"
       entity_category: diagnostic
-
   - platform: version
     name: "ESPHome Version"
     entity_category: diagnostic
@@ -195,7 +169,6 @@ sensor:
     name: "Wi-Fi Signal"
     update_interval: 60s
     entity_category: diagnostic
-
   - platform: uptime
     name: "Uptime"
     update_interval: 60s
