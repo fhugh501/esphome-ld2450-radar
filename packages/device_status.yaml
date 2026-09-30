@@ -32,10 +32,6 @@ globals:
     restore_value: no
     initial_value: "false"
 
-  - id: status_critical_fault
-    type: bool
-    restore_value: no
-    initial_value: "false"
 
 light:
   - platform: esp32_rmt_led_strip
@@ -54,15 +50,6 @@ light:
           update_interval: 500ms
           min_brightness: 15%
           max_brightness: 100%
-      - strobe:
-          name: "Critical Fault Flash"
-          colors:
-            - state: true
-              brightness: 100%
-              red: 100%
-              green: 0%
-              blue: 0%
-              duration: 250ms
             - state: false
               duration: 250ms
 
@@ -72,34 +59,19 @@ script:
     then:
       - if:
           condition:
-            lambda: 'return id(status_critical_fault);'
+            lambda: 'return id(status_updating);'
           then:
             - text_sensor.template.publish:
                 id: device_status
-                state: "Critical Fault"
+                state: "Updating"
             - light.turn_on:
                 id: onboard_led
                 brightness: 100%
                 red: 100%
-                green: 0%
+                green: 100%
                 blue: 0%
-                effect: "Critical Fault Flash"
+                effect: "None"
           else:
-            - if:
-                condition:
-                  lambda: 'return id(status_updating);'
-                then:
-                  - text_sensor.template.publish:
-                      id: device_status
-                      state: "Updating"
-                  - light.turn_on:
-                      id: onboard_led
-                      brightness: 100%
-                      red: 100%
-                      green: 100%
-                      blue: 0%
-                      effect: "None"
-                else:
                   - if:
                       condition:
                         lambda: 'return id(status_connection_error);'
@@ -171,23 +143,6 @@ script:
                 value: "true"
             - script.execute: update_device_status
 
-  # Component packages can call these scripts when a verified local fault
-  # condition is detected or cleared.
-  - id: set_critical_hardware_fault
-    mode: restart
-    then:
-      - globals.set:
-          id: status_critical_fault
-          value: "true"
-      - script.execute: update_device_status
-
-  - id: clear_critical_hardware_fault
-    mode: restart
-    then:
-      - globals.set:
-          id: status_critical_fault
-          value: "false"
-      - script.execute: update_device_status
 
 esphome:
   on_boot:
