@@ -2,7 +2,7 @@
 
 An ESPHome configuration for the Hi-Link HLK-LD2450 24 GHz radar. This project covers **only the LD2450 radar**. It does not modify, extend, improve, or redistribute [ESPectre](https://github.com/francescopace/espectre).
 
-The Kitchen prototype happens to run this radar on the same ESP32-S3 as [Francesco Pace's ESPectre Wi-Fi CSI project](https://github.com/francescopace/espectre). They are two independent sensing systems sharing a device. ESPectre provides Wi-Fi CSI motion sensing; the LD2450 provides mmWave target detection and tracking. The radar package can run on a device without ESPectre.
+My prototype happens to run this radar on the same ESP32-S3 as [Francesco Pace's ESPectre Wi-Fi CSI project](https://github.com/francescopace/espectre). They are two independent sensing systems sharing a device. ESPectre provides Wi-Fi CSI motion sensing; the LD2450 provides mmWave target detection and tracking. The radar package can run on a device without ESPectre.
 
 **Status:** This package transcribes the LD2450 portion of a working Home Assistant ESPHome configuration. It has not yet been compiled or flashed from this repository. Review your pins and run ESPHome **Validate** before installing. There is no firmware binary here.
 
@@ -13,7 +13,7 @@ This repository now separates **immutable hardware identity** from **deployment 
 
 ### Immutable device identity
 
-- `device_id`: last six hexadecimal characters of the ESP32 Wi-Fi MAC address (for example, MAC `44:1B:F6:81:F3:24` becomes `81F324`).
+- `device_id`: last six hexadecimal characters of the ESP32 Wi-Fi MAC address (for example, MAC `AA:BB:CC:12:34:56` becomes `123456`).
 - The full ESP32 MAC is exposed as a diagnostic entity so the identifier can be audited against the hardware.
 - Product family, hardware model, ESPHome version, IP address, SSID/BSSID, Wi-Fi signal, uptime, and controller status are exposed as diagnostics.
 - Do not encode a room number, customer, site, or other deployment-specific information into the immutable device identifier.
@@ -50,7 +50,7 @@ This layering is intended to keep residential builds simple while avoiding assum
 | Hi-Link HLK-LD2450 | Three-target 24 GHz mmWave tracking module |
 | Jumper wires and suitable power supply | UART, 5 V, and common ground |
 
-### Wiring used on the Kitchen prototype
+### Wiring used on my prototype
 
 | ESP32-S3 | LD2450 |
 | --- | --- |
@@ -82,10 +82,10 @@ The package is pinned to `main` above for easy updates. To freeze a known versio
 - Presence, moving target, and still target binary sensors use the ESPHome LD2450 component defaults. No manual icons are set, so Home Assistant can render the component's native classes and icons.
 - Up to three targets: X/Y and resolution in inches, distance in feet, speed in ft/s, plus angle and direction. The raw module reports millimeters and mm/s. These are **display** conversions; writable zone coordinates remain in millimeters.
 - Total and per-zone counts, presence timeout, Bluetooth and multi-target switches, zone mode, firmware details, and radar restart are exposed.
-- Target detail sensors retain the Kitchen prototype's `timeout: 1s` and `throttle_with_priority: 1000ms` filters. Inspect the underlying ESPHome LD2450 documentation when changing them.
+- Target detail sensors retain my prototype's `timeout: 1s` and `throttle_with_priority: 1000ms` filters. Inspect the underlying ESPHome LD2450 documentation when changing them.
 - LD2450 zone mode should stay **Disabled** while mapping the room. `Detection` counts targets inside zones; `Filter` excludes targets inside zones.
 
-The package keeps the Kitchen prototype's entity names. Home Assistant entity IDs may vary with your ESPHome device name and entity registry.
+The package keeps my prototype's entity names. Home Assistant entity IDs may vary with your ESPHome device name and entity registry.
 
 ## Parts links
 
@@ -95,6 +95,6 @@ The [Hi-Link AliExpress catalog shared for this build](https://a.aliexpress.com/
 
 - **ESPectre:** Created and maintained by [Francesco Pace and its contributors](https://github.com/francescopace/espectre). See the [ESPectre documentation](https://github.com/francescopace/espectre#documentation), [ESPHome frontend guide](https://github.com/francescopace/espectre/blob/main/src/cpp/frontend/esphome/README.md), and [licensing information](https://github.com/francescopace/espectre/blob/main/LICENSING.md) for their software. ESPectre handles Wi-Fi CSI motion sensing. This radar repository has no affiliation with or endorsement from the ESPectre maintainers.
 - **ESPHome:** The radar YAML uses ESPHome's built-in [`ld2450` component](https://esphome.io/components/sensor/ld2450/). The LD2450 hardware and firmware are made by [Hi-Link](https://www.hlktech.net/index.php?id=1157).
-- **This repository:** It supplies an ESPHome package, wiring notes, and display-unit choices for the LD2450. It contains no ESPectre code, firmware, models, or modified ESPectre component. The Kitchen ESPectre configuration also runs BLE telemetry and an onboard LED; neither is needed for this radar package. No credentials or complete household device configuration are included.
+- **This repository:** It supplies an ESPHome package, wiring notes, and display-unit choices for the LD2450. It contains no ESPectre code, firmware, models, or modified ESPectre component. My ESPectre configuration also runs BLE telemetry and an onboard LED; neither is needed for this radar package. No credentials or complete household device configuration are included.
 
 No license has been selected yet. Public access to a repository by itself does not grant a general license to reuse its contents.
